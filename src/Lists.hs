@@ -15,12 +15,12 @@ foldRight f b (x : xs) = f x (foldRight f b xs)
 -- >>> allSubLists [1,2,3,4,5,6]
 -- [[1],[2],[3],[4],[5],[6],[1,2],[2,3],[3,4],[4,5],[5,6],[1,2,3],[2,3,4],[3,4,5],[4,5,6],[1,2,3,4],[2,3,4,5],[3,4,5,6],[1,2,3,4,5],[2,3,4,5,6],[1,2,3,4,5,6]]
 allSubLists :: [a] -> [[a]]
-allSubLists xs = join [subListsOfSize i xs | i <- [1 .. (length xs)]]
-    where subListsOfSize 0 _ = [[]]
-          subListsOfSize _ [] = []
-          subListsOfSize n xs@(_ : tl) = let rest = if n > length tl then [] else subListsOfSize n tl
-                                             subList = take n xs in
-                                         if length subList < n then rest else subList : rest
+allSubLists xs = join [shiftList size xs | size <- [1 .. (length xs)]]
+    where shiftList 0 _ = [[]]
+          shiftList _ [] = []
+          shiftList size xs@(_ : tl) = let rest = if size > length tl then [] else shiftList size tl
+                                           subList = take size xs in
+                                       if length subList < size then rest else subList : rest
 
 -- |
 -- >>> contSublistSize [10, 12, 11]
@@ -50,7 +50,7 @@ contSublistSize xs = maybe 0 id . decreSize (length xs) $ sort xs
 
           shiftList n list@(_ : tl) = let subList = take n list
                                           [min', max'] = ($ subList) <$> [minimum, maximum]
-                                          listSize = if (max' - min') == length subList - 1 then Just (length subList) else Nothing
+                                          listSize = if (max' - min' + 1) == length subList then Just (length subList) else Nothing
                                           nextSubList = if n > length tl then Nothing else shiftList n tl in
                                           listSize `mplus` nextSubList
 
@@ -74,7 +74,34 @@ minSublistGreaterThan xs target = increSize 1
             | otherwise = shiftList n xs `mplus` increSize (n + 1)
 
           shiftList n list@(_ : tl) = let subList = take n list
-                                          currSubList = if sum subList > target then Just subList else Nothing                                      
+                                          currSubList = if sum subList > target then Just subList else Nothing
                                           nextSubList = if n > length tl then Nothing else shiftList n tl in
                                           currSubList `mplus` nextSubList
 
+-- |
+-- >>> smallestNum [1, 3, 6, 10, 11, 15]
+-- 2
+-- 
+-- >>> smallestNum [1, 1, 1, 1]
+-- 5
+-- 
+-- >>> smallestNum [1, 1, 3, 4]
+-- 10
+-- 
+-- >>> smallestNum [1, 2, 5, 10, 20, 40]
+-- 4
+-- 
+-- >>> smallestNum [1, 2, 3, 4, 5, 6]
+-- 22
+-- 
+-- >>> smallestNum [1, 2, 3, 8]
+-- 7
+-- 
+-- >>> smallestNum [1, 3]
+-- 2
+-- 
+smallestNum :: [Int] -> Int
+smallestNum = increment 1 . sort
+    where increment :: Int -> [Int] -> Int
+          increment acc [] = acc
+          increment acc (x : xs) = if acc < x then acc else increment (acc + x) xs

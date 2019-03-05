@@ -16,6 +16,12 @@ data Tree a where
     Branch :: Ord a => Tree a -> a -> Tree a -> Tree a
 
 deriving instance Show a => Show (Tree a)
+deriving instance Eq a => Eq (Tree a)
+
+-- instance Eq a => Eq (Tree a) where
+--   (==) (Branch l1 x1 r1) (Branch l2 x2 r2) = and [l1 == l2, x1 == x2, r1 == r2]
+--   (==) Empty Empty = True
+--   (==) _ _ = False
 
 -- |
 -- >>> isBstPreorder "1 2 3"
@@ -189,6 +195,7 @@ foldTree_minDepth = foldTree f 0
 foldTree_maxPathSum :: Tree Int -> Int
 foldTree_maxPathSum = (\(PathSumInfo tSums cSums) -> maximum $ tSums ++ cSums) . allPathSums
     where allPathSums = foldTree f (PathSumInfo [] [])
+    
           f (PathSumInfo lTSums lCSums) x (PathSumInfo rTSums rCSums) =
             let extendableSums = x : map (+x) (lCSums ++ rCSums)
                 terminatedSums = lTSums ++ rTSums ++ extendableSums ++ 
@@ -294,10 +301,66 @@ isSubtree _ Empty = True
 isSubtree Empty _ = False
 isSubtree main@(Branch l _ r) sub = or [main == sub, isSubtree l sub, isSubtree r sub]
 
-instance Eq a => Eq (Tree a) where
-    (==) (Branch l1 x1 r1) (Branch l2 x2 r2) = and [l1 == l2, x1 == x2, r1 == r2]
-    (==) Empty Empty = True
-    (==) _ _ = False
+-- |
+-- >>> lca ( Branch (Branch (Branch Empty 4 Empty) 8 (Branch (Branch Empty 10 Empty) 12 (Branch Empty 14 Empty))) 20 (Branch Empty 22 Empty) ) 10 14
+-- Just 12
+-- 
+-- >>> lca ( Branch (Branch (Branch Empty 4 Empty) 8 (Branch (Branch Empty 10 Empty) 12 (Branch Empty 14 Empty))) 20 (Branch Empty 22 Empty) ) 14 10
+-- Just 12
+-- 
+-- >>> lca ( Branch (Branch (Branch Empty 4 Empty) 8 (Branch (Branch Empty 10 Empty) 12 (Branch Empty 14 Empty))) 20 (Branch Empty 22 Empty) ) 14 8
+-- Just 8
+-- 
+-- >>> lca ( Branch (Branch (Branch Empty 4 Empty) 8 (Branch (Branch Empty 10 Empty) 12 (Branch Empty 14 Empty))) 20 (Branch Empty 22 Empty) ) 22 10
+-- Just 20
+-- 
+-- >>> lca ( Branch (Branch (Branch Empty 3 Empty) 4 Empty) 5 (Branch Empty 6 (Branch Empty 7 (Branch Empty 8 Empty))) ) 7 8
+-- Just 7
+-- 
+-- >>> lca ( Branch (Branch (Branch Empty 3 Empty) 4 Empty) 5 (Branch Empty 6 (Branch Empty 7 (Branch Empty 8 Empty))) ) 8 7
+-- Just 7
+-- 
+-- >>> lca ( Branch (Branch (Branch Empty 3 Empty) 4 Empty) 5 (Branch Empty 6 (Branch Empty 7 (Branch Empty 8 Empty))) ) 8 9
+-- Nothing
+-- 
+lca :: Tree Int -> Int -> Int -> Maybe Int
+lca tree x y = do 
+      xs <- trace tree x
+      ys <- trace tree y
+      firstCommonItem xs ys
+    where trace Empty _ = Nothing
+          trace (Branch l n r) x = let justN = Just [n] in 
+                                   if n == x then justN
+                                   else if n < x then (++) <$> trace r x <*> justN
+                                   else (++) <$> trace l x <*> justN
+
+          firstCommonItem xs@(x : xTl) ys@(y : yTl)
+            | x == y = Just x
+            | any (== x) ys = Just x
+            | any (== y) xs = Just y
+            | otherwise = firstCommonItem xTl yTl
+          firstCommonItem _ _ = Nothing
+
+-- |
+-- >>> removeNodeBelowDepth ( Branch (Branch (Branch (Branch (Branch Empty 9 Empty) 7 Empty) 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 (Branch (Branch Empty 8 Empty) 6 Empty)) ) 4
+-- Branch (Branch (Branch (Branch (Branch Empty 9 Empty) 7 Empty) 4 Empty) 2 Empty) 1 (Branch Empty 3 (Branch (Branch Empty 8 Empty) 6 Empty))
+-- 
+-- >>> removeNodeBelowDepth ( Branch (Branch (Branch (Branch (Branch Empty 9 Empty) 7 Empty) 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 (Branch (Branch Empty 8 Empty) 6 Empty)) ) 5
+-- Branch (Branch (Branch (Branch (Branch Empty 9 Empty) 7 Empty) 4 Empty) 2 Empty) 1 Empty
+-- 
+-- >>> removeNodeBelowDepth ( Branch (Branch (Branch (Branch (Branch Empty 9 Empty) 7 Empty) 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 (Branch (Branch Empty 8 Empty) 6 Empty)) ) 3
+-- Branch (Branch (Branch (Branch (Branch Empty 9 Empty) 7 Empty) 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 (Branch (Branch Empty 8 Empty) 6 Empty))
+-- 
+-- >>> removeNodeBelowDepth ( Branch (Branch (Branch (Branch (Branch Empty 9 Empty) 7 Empty) 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 (Branch (Branch Empty 8 Empty) 6 Empty)) ) 10
+-- Empty
+-- 
+removeNodeBelowDepth :: Tree a -> Int -> Tree a
+removeNodeBelowDepth tree target = recur tree 1
+    where recur Empty _ = Empty
+          recur node@(Branch Empty _ Empty) depth = if depth < target then Empty else node
+          recur (Branch l x r) depth = case flip recur (depth + 1) <$> [l, r] of
+                                            [Empty, Empty] -> Empty
+                                            [newL, newR] -> Branch newL x newR
 
 -- | 
 -- the approach is a bit similar to foldl
@@ -374,5 +437,4 @@ noOfBsts n = bstV n V.! n
                                   else evenNumVal + square (v V.! ((n - 1) `div` 2)) in
                     v V.++ V.fromList [finalVal]
           square n = n * n
-
 

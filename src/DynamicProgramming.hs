@@ -30,14 +30,6 @@ nPr _ 0 = [[]]
 nPr [] _ = []
 nPr xs n = join [ [x : ys | ys <- nPr (filter (x /=) xs) (n - 1)] | x <- xs ]
 
-mergeSort :: Ord a => [a] -> [a]
-mergeSort xs@(_ : _ : _) = let (first, second) = splitAt (length xs `div` 2) xs in
-                           merge (mergeSort first) (mergeSort second)
-                           where merge [] ys = ys
-                                 merge xs [] = xs
-                                 merge (x : xs) (y : ys) = if x < y then x : merge xs (y : ys) else y : merge (x : xs) ys
-mergeSort xs = xs
-
 coinChange :: [Int] -> Int -> [[(Int, Int)]]
 coinChange _ 0 = [[]]
 coinChange [] _ = []
