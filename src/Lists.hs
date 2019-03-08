@@ -1,7 +1,7 @@
 module Lists where
 
 import Protolude
-import Prelude (tail, id)
+import Prelude (tail, id, last)
 
 foldLeft :: (b -> a -> b) -> b -> [a] -> b
 foldLeft _ b [] = b
@@ -21,6 +21,18 @@ allSubLists xs = join [shiftList size xs | size <- [1 .. (length xs)]]
           shiftList size xs@(_ : tl) = let rest = if size > length tl then [] else shiftList size tl
                                            subList = take size xs in
                                        if length subList < size then rest else subList : rest
+
+sublistSum :: [Int] -> Int -> Maybe [Int]
+sublistSum list target = increSize 1
+  where increSize n
+          | n > length list = Nothing
+          | otherwise = shiftList list `mplus` increSize (n + 1)
+
+          where shiftList [] = Nothing
+                shiftList xs@(_ : tl)
+                  | n > length xs = Nothing
+                  | otherwise = let subList = take n xs in
+                                if sum subList == target then Just subList else shiftList tl
 
 -- |
 -- >>> contSublistSize [10, 12, 11]

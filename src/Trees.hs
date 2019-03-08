@@ -5,7 +5,7 @@
 module Trees where
 
 import Protolude 
-import Prelude (tail, String, read)
+import Prelude (tail, String, read, id)
 import qualified Data.Vector as V
 import qualified Data.Map as M
 
@@ -13,7 +13,7 @@ import qualified Data.Map as M
 
 data Tree a where
     Empty :: Tree a
-    Branch :: Ord a => Tree a -> a -> Tree a -> Tree a
+    Branch :: Tree a -> a -> Tree a -> Tree a
 
 deriving instance Show a => Show (Tree a)
 deriving instance Eq a => Eq (Tree a)
@@ -57,6 +57,39 @@ tokenise = flip recur ""
         recur delim token (x : xs) = if delim == x
                                         then token : recur delim "" xs
                                         else recur delim (token ++ [x]) xs
+
+-- |
+-- >>> isBst $ Branch (Branch Empty 7 (Branch Empty 11 Empty)) 10 (Branch Empty 39 Empty)
+-- False
+-- 
+-- isBst $ Branch (Branch E) 1 (Branch Empty 2 Empty)
+-- False
+-- 
+-- isBst $ Branch (Branch (Branch Empty 40 Empty) 20 (Branch Empty 60 Empty)) 10 (Branch Empty 30 Empty)
+-- False
+-- 
+-- isBst $ Branch (Branch Empty 1 Empty) 2 (Branch Empty 3 Empty)
+-- True
+-- 
+-- isBst $ Branch (Branch (Branch Empty 1 Empty) 2 Empty) 3 (Branch (Branch Empty 4 Empty) 5 (Branch Empty 6 Empty))
+-- True
+isBst :: Tree Int -> Bool
+isBst = isSubTreeBst . recur
+  where recur = foldTree f (IsBstInfo Nothing True Nothing)
+
+        f (IsBstInfo minL bL maxL) x (IsBstInfo minR bR maxR) = 
+          let isSubTreeBst = and [bL, bR, lessThan maxL (Just x), lessThan (Just x) minR]
+              [subtreeMin, subtreeMax] = (\g -> Just . g . catMaybes $ [minL, maxL, Just x, minR, maxR]) <$> 
+                                         [minimum, maximum] in
+          IsBstInfo {..}
+
+        lessThan x y = maybe True id $ x >>= (\v -> (v <) <$> y)
+    
+data IsBstInfo = IsBstInfo {
+    subtreeMin :: Maybe Int
+  , isSubTreeBst :: Bool
+  , subtreeMax :: Maybe Int
+}
 
 -- |
 -- >>> preorderStringToBst "3 1 2"
@@ -143,11 +176,7 @@ foldTree_postorder = foldTree (\lb x rb -> lb ++ rb ++ [x]) []
 -- >>> foldTree_levelorder $ Branch (Branch (Branch Empty 40 Empty) 20 (Branch Empty 60 Empty)) 10 (Branch Empty 30 Empty)
 -- [10,20,30,40,60]
 foldTree_levelorder :: Tree a -> [a]
-foldTree_levelorder = foldTree f []
-    where f [] x [] = [x]
-          f lb x [] = x : lb
-          f [] x rb = x : rb
-          f (lb : lbs) x (rb : rbs) = x : lb : rb : lbs ++ rbs
+foldTree_levelorder = breadthFirstBst -- level order is indeed breadth first
 
 -- |
 -- >>> foldTree_minDepth $ Branch (Branch Empty 3 Empty ) 1 (Branch Empty 2 Empty)
@@ -211,6 +240,70 @@ data PathSumInfo = PathSumInfo {
 }
 
 -- |
+-- e.g.
+--     a
+--    / \
+--   b   c
+--  /   / \
+-- d   e   f
+-- 
+-- should be a,b,d,c,e,f
+-- 
+-- >>> depthFirstBst $ Branch ((Branch (Branch Empty 'd' Empty) 'b' Empty)) 'a' (Branch (Branch Empty 'e' Empty) 'c' (Branch Empty 'f' Empty))
+-- "abdcef"
+-- 
+-- >>> depthFirstBst $ Branch (Branch (Branch (Branch Empty 'h' Empty) 'd' (Branch Empty 'i' Empty)) 'b' (Branch (Branch Empty 'j' Empty) 'e' (Branch Empty 'k' Empty))) 'a' (Branch (Branch (Branch Empty 'l' Empty) 'f' (Branch Empty 'm' Empty)) 'c' (Branch (Branch Empty 'n' Empty) 'g' (Branch Empty 'o' Empty)))
+-- "abdhiejkcflmgno"
+-- 
+-- >>> depthFirstBst $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch (Branch (Branch (Branch Empty 24 Empty) 12 (Branch Empty 25 Empty)) 6 (Branch (Branch Empty 26 Empty) 13 (Branch Empty 27 Empty))) 3 (Branch (Branch (Branch Empty 28 Empty) 14 (Branch Empty 29 Empty)) 7 (Branch (Branch Empty 30 Empty) 15 (Branch Empty 31 Empty))))
+-- [1,2,4,8,16,17,9,18,19,5,10,20,21,11,22,23,3,6,12,24,25,13,26,27,7,14,28,29,15,30,31]
+-- 
+-- >>> depthFirstBst $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch (Branch (Branch (Branch Empty 24 Empty) 12 Empty) 6 Empty) 3 Empty)
+-- [1,2,4,8,16,17,9,18,19,5,10,20,21,11,22,23,3,6,12,24]
+-- 
+-- >>> depthFirstBst  $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch Empty 3 (Branch (Branch (Branch Empty 28 Empty) 14 (Branch Empty 29 Empty)) 7 (Branch (Branch Empty 30 Empty) 15 Empty)))
+-- [1,2,4,8,16,17,9,18,19,5,10,20,21,11,22,23,3,7,14,28,29,15,30]
+depthFirstBst :: Tree a -> [a]
+depthFirstBst = uncurry (++) . recur
+  where recur = foldTree (\(l1, r1) x (l2, r2) -> (x : l1, r1 ++ l2 ++ r2)) ([], [])
+
+-- |
+-- e.g.
+--     a
+--    / \
+--   b   c
+--  /   / \
+-- d   e   f
+-- 
+-- should be a,b,c,d,e,f
+-- 
+-- >>> breadthFirstBst $ Branch ((Branch (Branch Empty 'd' Empty) 'b' Empty)) 'a' (Branch (Branch Empty 'e' Empty) 'c' (Branch Empty 'f' Empty))
+-- "abcdef"
+-- 
+-- >>> breadthFirstBst $ Branch (Branch (Branch (Branch Empty 'h' Empty) 'd' (Branch Empty 'i' Empty)) 'b' (Branch (Branch Empty 'j' Empty) 'e' (Branch Empty 'k' Empty))) 'a' (Branch (Branch (Branch Empty 'l' Empty) 'f' (Branch Empty 'm' Empty)) 'c' (Branch (Branch Empty 'n' Empty) 'g' (Branch Empty 'o' Empty)))
+-- "abcdefghijklmno"
+-- 
+-- >>> breadthFirstBst $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch (Branch (Branch (Branch Empty 24 Empty) 12 (Branch Empty 25 Empty)) 6 (Branch (Branch Empty 26 Empty) 13 (Branch Empty 27 Empty))) 3 (Branch (Branch (Branch Empty 28 Empty) 14 (Branch Empty 29 Empty)) 7 (Branch (Branch Empty 30 Empty) 15 (Branch Empty 31 Empty))))
+-- [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]
+-- 
+-- >>> breadthFirstBst $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch (Branch (Branch (Branch Empty 24 Empty) 12 Empty) 6 Empty) 3 Empty)
+-- [1,2,3,4,5,6,8,9,10,11,12,16,17,18,19,20,21,22,23,24]
+-- 
+-- >>> breadthFirstBst $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch Empty 3 (Branch (Branch (Branch Empty 28 Empty) 14 (Branch Empty 29 Empty)) 7 (Branch (Branch Empty 30 Empty) 15 Empty)))
+-- [1,2,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20,21,22,23,28,29,30]
+breadthFirstBst :: Tree a -> [a]
+breadthFirstBst = (\(x, lists) -> join (maybe [] (:[]) x : lists)) . foldTree f (Nothing, [])
+  where f :: (Maybe a, [[a]]) -> a -> (Maybe a, [[a]]) -> (Maybe a, [[a]])
+        f (Nothing, tl1) x (Nothing, tl2) = (Just x, merge tl1 tl2)
+        f (Just lvl1, tl1) x (Nothing, tl2) = (Just x, [lvl1] : merge tl1 tl2)
+        f (Nothing, tl1) x (Just lvl2, tl2) = (Just x, [lvl2] : merge tl1 tl2)
+        f (Just lvl1, tl1) x (Just lvl2, tl2) = (Just x, [lvl1, lvl2] : merge tl1 tl2)
+
+        merge xs1 xs2 = 
+          let trail = if length xs1 > length xs2 then drop (length xs2) xs1 else drop (length xs1) xs2 in
+          zipWith (++) xs1 xs2 ++ trail
+
+-- |
 -- >>> isFullBst $ Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 Empty)
 -- True
 -- 
@@ -260,18 +353,36 @@ bstTopView = bstProjectView (>)
 bstProjectView :: (Int -> Int -> Bool) -> Tree a -> [a]
 bstProjectView compare = map value . M.elems . recur 0 0 M.empty
   where recur _ _ m Empty = m
-        recur i depth m (Branch l value Empty) = recur (i - 1) (depth - 1) (updateMap i BstProjection{..} m) l
-        recur i depth m (Branch Empty value r) = recur (i + 1) (depth - 1) (updateMap i BstProjection{..} m) r
-        recur i depth m (Branch l value r) = let mFromLeft = recur (i - 1) (depth - 1) (updateMap i BstProjection{..} m) l in
-                                            recur (i + 1) (depth - 1) mFromLeft r
-
-        updateMap k v m = let newV = maybe v (\oldV -> if compare (depth oldV) (depth v) then oldV else v) . M.lookup k $ m in
-                            M.insert k newV m
+        recur x y m (Branch l n r) = 
+          let v = BstProjection n y 
+              newV = maybe v (\oldV -> if compare (depth oldV) (depth v) then oldV else v) $ M.lookup x m
+              mFromV = M.insert x newV m
+              mFromLeft = recur (x - 1) (y - 1) mFromV l in
+          recur (x + 1) (y - 1) mFromLeft r
                           
 data BstProjection a = BstProjection {
   value :: a
 , depth :: Int
 }
+
+-- |
+-- >>> bstRightView $ Branch (Branch (Branch Empty 4 (Branch Empty 8 Empty)) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch Empty 7 Empty))
+-- [1,3,7,8]
+-- 
+-- >>> bstRightView $ Branch (Branch Empty 3 Empty) 1 (Branch Empty 2 Empty)
+-- [1,2]
+-- 
+-- >>> bstRightView $ Branch (Branch (Branch Empty 40 Empty) 20 (Branch Empty 60 Empty)) 10 (Branch Empty 30 Empty)
+-- [10,30,60]
+bstRightView :: Tree a -> [a]
+bstRightView = map fst . M.elems . recur 0 0 M.empty
+  where recur _ _ m Empty = m
+        recur x y m (Branch l n r) = 
+          let v = (n, x)
+              newV = maybe v (\oldV -> if snd v > x then oldV else v) $ M.lookup y m
+              mFromCurrNode = M.insert y newV m
+              mFromLeft = recur (x - 1) (y + 1) mFromCurrNode l in
+          recur (x + 1) (y + 1) mFromLeft r 
 
 -- |
 -- 
@@ -361,6 +472,27 @@ removeNodeBelowDepth tree target = recur tree 1
           recur (Branch l x r) depth = case flip recur (depth + 1) <$> [l, r] of
                                             [Empty, Empty] -> Empty
                                             [newL, newR] -> Branch newL x newR
+
+-- |
+-- >>> mirrorTree $ Branch (Branch Empty 3 Empty) 1 (Branch (Branch Empty 5 Empty) 2 (Branch Empty 4 Empty))
+-- Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 Empty)
+mirrorTree :: Tree a -> Tree a
+mirrorTree Empty = Empty
+mirrorTree (Branch l x r) = Branch (mirrorTree r) x (mirrorTree l)
+
+-- |
+-- >>> alternateReverse $ Branch (Branch (Branch (Branch Empty 'h' Empty) 'd' (Branch Empty 'i' Empty)) 'b' (Branch (Branch Empty 'j' Empty) 'e' (Branch Empty 'k' Empty))) 'a' (Branch (Branch (Branch Empty 'l' Empty) 'f' (Branch Empty 'm' Empty)) 'c' (Branch (Branch Empty 'n' Empty) 'g' (Branch Empty 'o' Empty)))
+-- Just (Branch (Branch (Branch (Branch Empty 'o' Empty) 'd' (Branch Empty 'n' Empty)) 'c' (Branch (Branch Empty 'm' Empty) 'e' (Branch Empty 'l' Empty))) 'a' (Branch (Branch (Branch Empty 'k' Empty) 'f' (Branch Empty 'j' Empty)) 'b' (Branch (Branch Empty 'i' Empty) 'g' (Branch Empty 'h' Empty))))
+-- 
+alternateReverse :: Tree a -> Maybe (Tree a)
+alternateReverse tree = recur False tree tree
+    where recur :: Bool -> Tree a -> Tree a -> Maybe (Tree a) 
+          recur _ Empty Empty = Just Empty
+          recur swap (Branch l1 x1 r1) (Branch l2 x2 r2) = -- 1st tree is reversed, 2nd tree is original
+            let toggle = not swap
+                node = if swap then x1 else x2 in
+            Branch <$> recur toggle r1 l2 <*> pure node <*> recur toggle l1 r2
+          recur _ _ _ = Nothing
 
 -- | 
 -- the approach is a bit similar to foldl

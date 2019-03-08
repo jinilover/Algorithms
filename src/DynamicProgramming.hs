@@ -33,7 +33,10 @@ nPr xs n = join [ [x : ys | ys <- nPr (filter (x /=) xs) (n - 1)] | x <- xs ]
 coinChange :: [Int] -> Int -> [[(Int, Int)]]
 coinChange _ 0 = [[]]
 coinChange [] _ = []
-coinChange (c : cs) sum = concat [ map ((c, size):) $ coinChange cs (sum - c * size) | size <- [1 .. sum `div` c]] ++ coinChange cs sum
+coinChange (c : cs) target = coinChange cs target ++
+    do cSize <- [1 .. (target `div` c)]
+       prevList <- coinChange cs (target - c * cSize)
+       return $ (c, cSize) : prevList
 
 fib :: Int -> Int
 fib n = fibonacci !! (n - 1)
@@ -99,9 +102,17 @@ superDigit n
     | otherwise = superDigit . sum . toDigits $ n
 
 toDigits :: Int -> [Int]
-toDigits n = case n `div` 10 of
-                0 -> [n]
-                multiples -> toDigits multiples ++ [n `mod` 10]
+toDigits n
+  | n < 10 = [n]
+  | otherwise = toDigits (n `div` 10) ++ [n `mod` 10]
+
+isIntPalindrome :: Int -> Bool
+isIntPalindrome = isPalindrome . toDigits
+
+isPalindrome :: Eq a => [a] -> Bool
+isPalindrome [] = True
+isPalindrome [x] = True
+isPalindrome (x : xs) = x == last xs && (isPalindrome . take (length xs - 1) $ xs)
 
 -- |
 -- >>> isSubstring "abcdef" "def"
@@ -160,6 +171,34 @@ nQueens n = length $ recur n
           isSafe (r, c) xs = all (\(r', c') -> r' /= r && c' /= c) xs && -- neither on occupied row nor col
                              all (notDiag (r,c)) xs -- neither on occupied diagonal
           notDiag (r, c) (r', c') = abs (r - r') /= abs (c - c')
+
+subsetSum :: [Int] -> Int -> Maybe [Int]
+subsetSum _ 0 = Just []
+subsetSum [] _ = Nothing
+subsetSum (x : xs) target =
+    let firstTry = if x > target then Nothing else (x :) <$> subsetSum xs (target - x) in
+    firstTry `mplus` subsetSum xs target
+
+-- |
+-- >>> knapsack01 [60, 100, 120] [10, 20, 30] 50
+-- 220
+-- 
+-- >>> knapsack01 [1, 2, 3] [4, 5, 1] 4
+-- 3
+-- 
+knapsack01 :: [Int] -> [Int] -> Int -> Int -- [v] -> [w] -> W -> sumV
+knapsack01 vs ws = valSum . recur (zip vs ws)
+    where recur _ 0 = []
+          recur [] _ = []
+          recur (t@(v, w) : xs) cap =
+            let alternate = recur xs cap in
+            if w > cap then alternate else maximise (t : recur xs (cap - w)) alternate
+
+          maximise t1 t2
+            | valSum t1 > valSum t2 = t1
+            | otherwise = t2
+
+          valSum = sum . map fst
 
 type Interval = (Int, Int)
 
