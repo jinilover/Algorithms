@@ -292,16 +292,12 @@ depthFirstBst = uncurry (++) . recur
 -- >>> breadthFirstBst $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch Empty 3 (Branch (Branch (Branch Empty 28 Empty) 14 (Branch Empty 29 Empty)) 7 (Branch (Branch Empty 30 Empty) 15 Empty)))
 -- [1,2,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20,21,22,23,28,29,30]
 breadthFirstBst :: Tree a -> [a]
-breadthFirstBst = (\(x, lists) -> join (maybe [] (:[]) x : lists)) . foldTree f (Nothing, [])
-  where f :: (Maybe a, [[a]]) -> a -> (Maybe a, [[a]]) -> (Maybe a, [[a]])
-        f (Nothing, tl1) x (Nothing, tl2) = (Just x, merge tl1 tl2)
-        f (Just lvl1, tl1) x (Nothing, tl2) = (Just x, [lvl1] : merge tl1 tl2)
-        f (Nothing, tl1) x (Just lvl2, tl2) = (Just x, [lvl2] : merge tl1 tl2)
-        f (Just lvl1, tl1) x (Just lvl2, tl2) = (Just x, [lvl1, lvl2] : merge tl1 tl2)
+breadthFirstBst = (\(x, lists) -> maybeToList x ++ join lists) . foldTree f (Nothing, [])
+  where f (lvl1, tl1) x (lvl2, tl2) = let nextLvls = catMaybes [lvl1, lvl2] in
+                                      (if null nextLvls then id else (nextLvls:)) <$> (Just x, merge tl1 tl2)
 
-        merge xs1 xs2 = 
-          let trail = if length xs1 > length xs2 then drop (length xs2) xs1 else drop (length xs1) xs2 in
-          zipWith (++) xs1 xs2 ++ trail
+        merge xs1 xs2 = let trail = if length xs1 > length xs2 then drop (length xs2) xs1 else drop (length xs1) xs2 in
+                        zipWith (++) xs1 xs2 ++ trail
 
 -- |
 -- >>> isFullBst $ Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 Empty)

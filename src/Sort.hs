@@ -46,8 +46,8 @@ quickSort (x : xs) = quickSort (filter (< x) xs) ++ x : quickSort (filter (> x) 
 -- 
 -- >>> searchByList [2,5,8,12,23] 22
 -- Nothing
-searchByList :: Ord a => [a] -> a -> Maybe Int
-searchByList xs = search (zip [0..(length xs - 1)] xs)
+binarySearch :: Ord a => [a] -> a -> Maybe Int
+binarySearch xs = search (zip [0..(length xs - 1)] xs)
     where search [] _ = Nothing
           search list x = case splitList list of
                             ([], hd : _) -> if snd hd == x then Just $ fst hd else Nothing
