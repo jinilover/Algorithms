@@ -9,8 +9,6 @@ import Prelude (tail, String, read, id)
 import qualified Data.Vector as V
 import qualified Data.Map as M
 
--- $setup
-
 data Tree a where
     Empty :: Tree a
     Branch :: Tree a -> a -> Tree a -> Tree a

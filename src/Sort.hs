@@ -32,19 +32,19 @@ quickSort [] = []
 quickSort (x : xs) = quickSort (filter (< x) xs) ++ x : quickSort (filter (> x) xs)
 
 -- |
--- >>> searchByList [2,5,8,12,16,23,38,56,72,91] 23
+-- >>> binarySearch [2,5,8,12,16,23,38,56,72,91] 23
 -- Just 5
 -- 
--- >>> searchByList [23,38,56,72,91] 23
+-- >>> binarySearch [23,38,56,72,91] 23
 -- Just 0
 -- 
--- >>> searchByList [2,5,8,12,16,23] 23
+-- >>> binarySearch [2,5,8,12,16,23] 23
 -- Just 5
 -- 
--- >>> searchByList [2,5,8,12,23] 23
+-- >>> binarySearch [2,5,8,12,23] 23
 -- Just 4
 -- 
--- >>> searchByList [2,5,8,12,23] 22
+-- >>> binarySearch [2,5,8,12,23] 22
 -- Nothing
 binarySearch :: Ord a => [a] -> a -> Maybe Int
 binarySearch xs = search (zip [0..(length xs - 1)] xs)

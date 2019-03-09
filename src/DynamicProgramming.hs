@@ -7,8 +7,6 @@ import Prelude ((!!), tail, zip, String, readLn, getLine, read, last)
 import Data.Text (unpack)
 import Control.Monad
 
--- $setup
-
 -- |
 --
 -- >>> uniqueList [1,1,2,2,3,4]
