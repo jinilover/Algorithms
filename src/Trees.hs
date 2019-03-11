@@ -268,6 +268,38 @@ depthFirstBst = uncurry (++) . recur
                                (x : l1, r1 ++ l2 ++ r2)
 
 -- |
+-- >>> depthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 13
+-- []
+-- 
+-- >>> depthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 4
+-- [1,2,4]
+-- 
+-- >>> depthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 5
+-- [1,2,4,5]
+-- 
+-- >>> depthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 6
+-- [1,2,4,5,3,6]
+-- 
+-- >>> depthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 7
+-- [1,2,4,5,3,6,7]
+-- 
+-- >>> depthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 8
+-- [1,2,4,5,3,6,7,8]
+-- 
+-- >>> depthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 9
+-- [1,2,4,5,3,6,7,8,9]
+-- 
+depthFirstSearch :: Eq a => Tree a -> a -> [a]
+depthFirstSearch tree dest = 
+  let (path, found) = recur [] tree in if found then path else []
+  where recur visited Empty = (visited, False)
+        recur visited (Branch l x r) 
+          | x == dest = (visited ++ [x], True)
+          | elem x visited = (visited, False)
+          | otherwise = let (newVisited, found) = recur (visited ++ [x]) l in
+                        if found then (newVisited, found) else recur newVisited r
+
+-- |
 -- e.g.
 --     a
 --    / \
@@ -307,6 +339,28 @@ breadthFirstBst tree = recur [] [tree] []
         recur path (Empty : trees) subtrees = recur path trees subtrees
         recur path (Branch l x r : trees) subtrees = recur (path ++ [x]) trees (subtrees ++ [l, r])
 
+-- |
+-- >>> breadthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 13
+-- []
+-- 
+-- >>> breadthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 4
+-- [1,2,3,4]
+-- 
+-- >>> breadthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 5
+-- [1,2,3,4,5]
+-- 
+-- >>> breadthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 6
+-- [1,2,3,4,5,6]
+-- 
+-- >>> breadthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 7
+-- [1,2,3,4,5,6,7]
+-- 
+-- >>> breadthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 8
+-- [1,2,3,4,5,6,7,8]
+-- 
+-- >>> breadthFirstSearch ( Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch (Branch Empty 6 Empty) 3 (Branch (Branch Empty 8 Empty) 7 (Branch Empty 9 Empty))) ) 9
+-- [1,2,3,4,5,6,7,8,9]
+-- 
 breadthFirstSearch :: Eq a => Tree a -> a -> [a]
 breadthFirstSearch tree dest = 
   let (path, found, _) = recur [] [tree] [] in
