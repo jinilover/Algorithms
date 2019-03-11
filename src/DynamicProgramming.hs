@@ -7,17 +7,6 @@ import Prelude ((!!), tail, zip, String, readLn, getLine, read, last)
 import Data.Text (unpack)
 import Control.Monad
 
--- |
---
--- >>> uniqueList [1,1,2,2,3,4]
--- [1,2,3,4]
---
--- >>> uniqueList [1,2,1,2,3,4,4,3]
--- [1,2,3,4]
-uniqueList :: Eq a => [a] -> [a]
-uniqueList (x : xs) = x : (uniqueList . filter (x /=) $ xs)
-uniqueList xs = xs
-
 nCr :: Eq a => [a] -> Int -> [[a]]
 nCr _ 0 = [[]]
 nCr [] _ = []

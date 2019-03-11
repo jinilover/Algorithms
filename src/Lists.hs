@@ -12,6 +12,17 @@ foldRight _ b [] = b
 foldRight f b (x : xs) = f x (foldRight f b xs)
 
 -- |
+--
+-- >>> uniqueList [1,1,2,2,3,4]
+-- [1,2,3,4]
+--
+-- >>> uniqueList [1,2,1,2,3,4,4,3]
+-- [1,2,3,4]
+uniqueList :: Eq a => [a] -> [a]
+uniqueList (x : xs) = x : (uniqueList . filter (x /=) $ xs)
+uniqueList xs = xs
+
+-- |
 -- >>> allSubLists [1,2,3,4,5,6]
 -- [[1],[2],[3],[4],[5],[6],[1,2],[2,3],[3,4],[4,5],[5,6],[1,2,3],[2,3,4],[3,4,5],[4,5,6],[1,2,3,4],[2,3,4,5],[3,4,5,6],[1,2,3,4,5],[2,3,4,5,6],[1,2,3,4,5,6]]
 allSubLists :: [a] -> [[a]]
