@@ -25,38 +25,38 @@ data Node a = Node {
 
 type Graph a = [Node a]
 
-generate :: Eq a => [a] -> Graph a
-generate (x1 : x2 : xs) = addNode x2 x1 $ addNode x1 x2 $ generate xs
+genGraph :: Eq a => [a] -> Graph a
+genGraph (x1 : x2 : xs) = addNode x2 x1 $ addNode x1 x2 $ genGraph xs
   where addNode :: Eq a => a -> a -> Graph a -> Graph a
         addNode x1 x2 xs =
           let newNode = maybe (Node x1 [x2]) (\node@Node{..} ->
                         node {adjacents = x2 : adjacents}) $ find ((x1 ==) . value) xs in
           newNode : filter ((x1 /=) . value) xs
-generate _ = []
+genGraph _ = []
 
 -- |
--- >>> bfsGraph 1 4 $ generate [1,2,1,3,1,4,3,5]
+-- >>> bfsGraph 1 4 $ genGraph [1,2,1,3,1,4,3,5]
 -- [1,2,3,4]
 -- 
--- >>> bfsGraph 1 5 $ generate [1,2,1,3,1,4,3,5]
+-- >>> bfsGraph 1 5 $ genGraph [1,2,1,3,1,4,3,5]
 -- [1,2,3,4,5]
 -- 
--- >>> bfsGraph 3 5 $ generate [1,2,1,3,1,4,3,5]
+-- >>> bfsGraph 3 5 $ genGraph [1,2,1,3,1,4,3,5]
 -- [3,1,5]
 -- 
--- >>> bfsGraph 3 6 $ generate [1,2,1,3,1,4,3,5]
+-- >>> bfsGraph 3 6 $ genGraph [1,2,1,3,1,4,3,5]
 -- []
 -- 
--- >>> bfsGraph 0 5 $ generate [1,2,1,3,1,4,3,5]
+-- >>> bfsGraph 0 5 $ genGraph [1,2,1,3,1,4,3,5]
 -- []
 -- 
--- >>> bfsGraph 1 9 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- >>> bfsGraph 1 9 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,3,4,5,6,7,8,9]
 -- 
--- >>> bfsGraph 1 12 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- >>> bfsGraph 1 12 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,3,4,5,6,7,8,9,10,11,12]
 -- 
--- >>> bfsGraph 1 5 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- >>> bfsGraph 1 5 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,3,4,5]
 bfsGraph :: Eq a => a -> a -> Graph a -> [a]
 bfsGraph src dest graph = maybe [] (\node -> 
@@ -72,31 +72,31 @@ bfsGraph src dest graph = maybe [] (\node ->
                             else traverseNodes newVisited (mapMaybe (findNode graph) . nub $ allSiblingAdjs) []
 
 -- |
--- >>> dfsGraph 1 4 $ generate [1,2,1,3,1,4,3,5]
+-- >>> dfsGraph 1 4 $ genGraph [1,2,1,3,1,4,3,5]
 -- [1,2,3,5,4]
 -- 
--- >>> dfsGraph 1 5 $ generate [1,2,1,3,1,4,3,5]
+-- >>> dfsGraph 1 5 $ genGraph [1,2,1,3,1,4,3,5]
 -- [1,2,3,5]
 -- 
--- >>> dfsGraph 3 5 $ generate [1,2,1,3,1,4,3,5]
+-- >>> dfsGraph 3 5 $ genGraph [1,2,1,3,1,4,3,5]
 -- [3,1,2,4,5]
 -- 
--- >>> dfsGraph 3 6 $ generate [1,2,1,3,1,4,3,5]
+-- >>> dfsGraph 3 6 $ genGraph [1,2,1,3,1,4,3,5]
 -- []
 -- 
--- >>> dfsGraph 0 5 $ generate [1,2,1,3,1,4,3,5]
+-- >>> dfsGraph 0 5 $ genGraph [1,2,1,3,1,4,3,5]
 -- []
 -- 
--- >>> dfsGraph 1 9 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- >>> dfsGraph 1 9 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,5,6,7,3,8,9]
 -- 
--- >>> dfsGraph 1 12 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- >>> dfsGraph 1 12 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,5,6,7,3,8,9,10,4,11,12]
 -- 
--- >>> dfsGraph 1 5 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- >>> dfsGraph 1 5 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,5]
 -- 
--- >>> dfsGraph 1 7 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- >>> dfsGraph 1 7 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,5,6,7]
 dfsGraph :: Eq a => a -> a -> Graph a -> [a]
 dfsGraph src dest graph = maybe [] (\node -> 
