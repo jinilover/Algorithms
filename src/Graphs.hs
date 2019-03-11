@@ -19,7 +19,7 @@ foldCofree :: Functor f => (a -> f b -> b) -> b -> Cofree f a -> b
 foldCofree g b (x :< fOfCofree) = g x (foldCofree g b <$> fOfCofree)
 
 data Node a = Node {
-    value :: a
+    nodeVal :: a
   , adjacents :: [a]
 } deriving Show
 
@@ -30,8 +30,8 @@ genGraph (x1 : x2 : xs) = addNode x2 x1 $ addNode x1 x2 $ genGraph xs
   where addNode :: Eq a => a -> a -> Graph a -> Graph a
         addNode x1 x2 xs =
           let newNode = maybe (Node x1 [x2]) (\node@Node{..} ->
-                        node {adjacents = x2 : adjacents}) $ find ((x1 ==) . value) xs in
-          newNode : filter ((x1 /=) . value) xs
+                        node {adjacents = x2 : adjacents}) $ find ((x1 ==) . nodeVal) xs in
+          newNode : filter ((x1 /=) . nodeVal) xs
 genGraph _ = []
 
 -- |
@@ -64,9 +64,9 @@ bfsGraph src dest graph = maybe [] (\node ->
   ) $ findNode graph src
   where traverseNodes visited [] adjs = (visited, False, adjs)
         traverseNodes visited (Node{..} : nodes) adjs
-            | elem value visited = traverseNodes visited nodes adjs
-            | value == dest = (visited ++ [dest], True, [])
-            | otherwise = let (newVisited, found, allSiblingAdjs) = traverseNodes (visited ++ [value]) nodes (adjs ++ adjacents) in
+            | elem nodeVal visited = traverseNodes visited nodes adjs
+            | nodeVal == dest = (visited ++ [dest], True, [])
+            | otherwise = let (newVisited, found, allSiblingAdjs) = traverseNodes (visited ++ [nodeVal]) nodes (adjs ++ adjacents) in
                           if found 
                             then (newVisited, True, [])
                             else traverseNodes newVisited (mapMaybe (findNode graph) . nub $ allSiblingAdjs) []
@@ -104,12 +104,16 @@ dfsGraph src dest graph = maybe [] (\node ->
   ) $ findNode graph src
   where traverseNodes visited [] = (visited, False)
         traverseNodes visited (Node{..} : nodes)
-          | elem value visited = traverseNodes visited nodes
-          | value == dest = (visited ++ [value], True)
-          | otherwise = let (newVisited, found) = traverseNodes (visited ++ [value]) . mapMaybe (findNode graph) $ adjacents in
+          | elem nodeVal visited = traverseNodes visited nodes
+          | nodeVal == dest = (visited ++ [nodeVal], True)
+          | otherwise = let (newVisited, found) = traverseNodes (visited ++ [nodeVal]) . mapMaybe (findNode graph) $ adjacents in
                         if found
                           then (newVisited, True)
                           else traverseNodes newVisited nodes
 
 findNode :: Eq a => Graph a -> a -> Maybe (Node a)
-findNode graph v = find ((== v) . value) graph
+findNode graph v = find ((== v) . nodeVal) graph
+
+-- data Vertex a = Vertex {
+--     value :: 
+-- }
