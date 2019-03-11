@@ -35,6 +35,9 @@ generate (x1 : x2 : xs) = addNode x2 x1 $ addNode x1 x2 $ generate xs
 generate _ = []
 
 -- |
+-- >>> bfsGraph 1 4 $ generate [1,2,1,3,1,4,3,5]
+-- [1,2,3,4]
+-- 
 -- >>> bfsGraph 1 5 $ generate [1,2,1,3,1,4,3,5]
 -- [1,2,3,4,5]
 -- 
@@ -67,6 +70,46 @@ bfsGraph src dest graph = maybe [] (\node ->
                           if found 
                             then (newVisited, True, [])
                             else traverseNodes newVisited (mapMaybe (findNode graph) . nub $ allSiblingAdjs) []
+
+-- |
+-- >>> dfsGraph 1 4 $ generate [1,2,1,3,1,4,3,5]
+-- [1,2,3,5,4]
+-- 
+-- >>> dfsGraph 1 5 $ generate [1,2,1,3,1,4,3,5]
+-- [1,2,3,5]
+-- 
+-- >>> dfsGraph 3 5 $ generate [1,2,1,3,1,4,3,5]
+-- [3,1,2,4,5]
+-- 
+-- >>> dfsGraph 3 6 $ generate [1,2,1,3,1,4,3,5]
+-- []
+-- 
+-- >>> dfsGraph 0 5 $ generate [1,2,1,3,1,4,3,5]
+-- []
+-- 
+-- >>> dfsGraph 1 9 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- [1,2,5,6,7,3,8,9]
+-- 
+-- >>> dfsGraph 1 12 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- [1,2,5,6,7,3,8,9,10,4,11,12]
+-- 
+-- >>> dfsGraph 1 5 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- [1,2,5]
+-- 
+-- >>> dfsGraph 1 7 $ generate [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
+-- [1,2,5,6,7]
+dfsGraph :: Eq a => a -> a -> Graph a -> [a]
+dfsGraph src dest graph = maybe [] (\node -> 
+    let (path, found) = traverseNodes [] [node] in if found then path else []
+  ) $ findNode graph src
+  where traverseNodes visited [] = (visited, False)
+        traverseNodes visited (Node{..} : nodes)
+          | elem value visited = traverseNodes visited nodes
+          | value == dest = (visited ++ [value], True)
+          | otherwise = let (newVisited, found) = traverseNodes (visited ++ [value]) . mapMaybe (findNode graph) $ adjacents in
+                        if found
+                          then (newVisited, True)
+                          else traverseNodes newVisited nodes
 
 findNode :: Eq a => Graph a -> a -> Maybe (Node a)
 findNode graph v = find ((== v) . value) graph
