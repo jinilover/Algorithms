@@ -16,11 +16,6 @@ data Tree a where
 deriving instance Show a => Show (Tree a)
 deriving instance Eq a => Eq (Tree a)
 
--- instance Eq a => Eq (Tree a) where
---   (==) (Branch l1 x1 r1) (Branch l2 x2 r2) = and [l1 == l2, x1 == x2, r1 == r2]
---   (==) Empty Empty = True
---   (==) _ _ = False
-
 -- |
 -- >>> isBstPreorder "1 2 3"
 -- True
@@ -262,8 +257,15 @@ data PathSumInfo = PathSumInfo {
 -- >>> depthFirstBst  $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch Empty 3 (Branch (Branch (Branch Empty 28 Empty) 14 (Branch Empty 29 Empty)) 7 (Branch (Branch Empty 30 Empty) 15 Empty)))
 -- [1,2,4,8,16,17,9,18,19,5,10,20,21,11,22,23,3,7,14,28,29,15,30]
 depthFirstBst :: Tree a -> [a]
+-- -- solution 1
+-- depthFirstBst = uncurry (++) . recur
+--   where recur = foldTree (\(l1, r1) x (l2, r2) -> (x : l1, r1 ++ l2 ++ r2)) ([], [])
+-- 
+-- -- solution 2
 depthFirstBst = uncurry (++) . recur
-  where recur = foldTree (\(l1, r1) x (l2, r2) -> (x : l1, r1 ++ l2 ++ r2)) ([], [])
+  where recur Empty = ([], [])
+        recur (Branch l x r) = let [(l1, r1), (l2, r2)] = recur <$> [l, r] in
+                               (x : l1, r1 ++ l2 ++ r2)
 
 -- |
 -- e.g.
@@ -290,12 +292,34 @@ depthFirstBst = uncurry (++) . recur
 -- >>> breadthFirstBst $ Branch (Branch (Branch (Branch (Branch Empty 16 Empty) 8 (Branch Empty 17 Empty)) 4 (Branch (Branch Empty 18 Empty) 9 (Branch Empty 19 Empty))) 2 (Branch (Branch (Branch Empty 20 Empty) 10 (Branch Empty 21 Empty)) 5 (Branch (Branch Empty 22 Empty) 11 (Branch Empty 23 Empty)))) 1 (Branch Empty 3 (Branch (Branch (Branch Empty 28 Empty) 14 (Branch Empty 29 Empty)) 7 (Branch (Branch Empty 30 Empty) 15 Empty)))
 -- [1,2,3,4,5,7,8,9,10,11,14,15,16,17,18,19,20,21,22,23,28,29,30]
 breadthFirstBst :: Tree a -> [a]
-breadthFirstBst = (\(x, lists) -> maybeToList x ++ join lists) . foldTree f (Nothing, [])
-  where f (lvl1, tl1) x (lvl2, tl2) = let nextLvls = catMaybes [lvl1, lvl2] in
-                                      (if null nextLvls then id else (nextLvls:)) <$> (Just x, merge tl1 tl2)
+-- -- solution 1
+-- breadthFirstBst = (\(x, lists) -> maybeToList x ++ join lists) . foldTree f (Nothing, [])
+--   where f (lvl1, tl1) x (lvl2, tl2) = let nextLvls = catMaybes [lvl1, lvl2] in
+--                                       (if null nextLvls then id else (nextLvls:)) <$> (Just x, merge tl1 tl2)
 
-        merge xs1 xs2 = let trail = if length xs1 > length xs2 then drop (length xs2) xs1 else drop (length xs1) xs2 in
-                        zipWith (++) xs1 xs2 ++ trail
+--         merge xs1 xs2 = let trail = if length xs1 > length xs2 then drop (length xs2) xs1 else drop (length xs1) xs2 in
+--                         zipWith (++) xs1 xs2 ++ trail
+-- 
+-- -- solution 2
+breadthFirstBst tree = recur [] [tree] []
+  where recur path [] [] = path
+        recur path [] subtrees = recur path subtrees []
+        recur path (Empty : trees) subtrees = recur path trees subtrees
+        recur path (Branch l x r : trees) subtrees = recur (path ++ [x]) trees (subtrees ++ [l, r])
+
+breadthFirstSearch :: Eq a => Tree a -> a -> [a]
+breadthFirstSearch tree dest = 
+  let (path, found, _) = recur [] [tree] [] in
+  if found then path else []
+  where recur visited [] subtrees = (visited, False, subtrees) -- visited -> trees -> subtrees of next level
+        recur visited (Empty : siblings) subtrees = recur visited siblings subtrees
+        recur visited (Branch l x r : siblings) subtrees
+          | x == dest = (visited ++ [dest], True, [])
+          | elem x visited = recur visited siblings subtrees
+          | otherwise = let (newVisited, found, allSiblingSubtrees) = recur (visited ++ [x]) siblings (subtrees ++ [l, r]) in
+                        if found 
+                          then (newVisited, True, [])
+                          else recur newVisited allSiblingSubtrees []
 
 -- |
 -- >>> isFullBst $ Branch (Branch (Branch Empty 4 Empty) 2 (Branch Empty 5 Empty)) 1 (Branch Empty 3 Empty)
