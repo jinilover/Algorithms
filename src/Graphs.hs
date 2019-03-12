@@ -118,32 +118,37 @@ dfsGraph src dest graph = maybe [] (\node ->
 findNode :: Eq a => Graph a -> a -> Maybe (Node a)
 findNode = findPoint node
 
-type Edge = (Int, Int) -- (vertex, cost)
+type Edge a = (a, Int) -- (vertex, cost)
 
-data Vertex = Vertex {
-    vertex :: Int
-  , edges :: [Edge]
+data Vertex a = Vertex {
+    vertex :: a
+  , edges :: [Edge a]
 } deriving Show
 
-type Web = [Vertex]
+type Web a = [Vertex a]
 
-findVertex :: Web -> Int -> Maybe Vertex
+findVertex :: Eq a => Web a -> a -> Maybe (Vertex a)
 findVertex = findPoint vertex
 
 findPoint :: Eq a => (b -> a) -> [b] -> a -> Maybe b
 findPoint f xs x = find ((x ==) . f) xs
 
-genWeb :: [Int] -> Web
-genWeb (x1 : x2 : cost : xs) = addVertex x2 x1 cost $ addVertex x1 x2 cost $ genWeb xs
-  where addVertex :: Int -> Int -> Int -> Web -> Web
-        addVertex x1 x2 cost xs =
+genWeb :: Eq a => [(a, a, Int)] -> Web a
+genWeb ((x1, x2, cost) : xs) = addVertex x2 x1 cost $ addVertex x1 x2 cost $ genWeb xs
+  where addVertex x1 x2 cost xs =
           let newVertex = maybe (Vertex x1 [(x2, cost)]) (\v ->
                             v {edges = (x2, cost) : edges v}
                           ) $ findVertex xs x1 in
           newVertex : filter ((/= x1) . vertex) xs
 genWeb [] = []
 
-shortestPath :: Int -> Int -> Web -> [Int]
+-- |
+-- >>> shortestPath 1 3 $ genWeb [(1,2,10),(1,3,20),(1,4,1),(2,3,16),(3,4,4)]
+-- [1,4,3]
+-- 
+-- >>> shortestPath 2 3 $ genWeb [(1,2,10),(1,3,20),(1,4,1),(2,3,16),(3,4,4)]
+-- [2,1,4,3]
+shortestPath :: Eq a => a -> a -> Web a -> [a]
 shortestPath src dest w
   | src == dest = []
   | otherwise = maybe [] (\Vertex{..} ->
@@ -162,9 +167,10 @@ shortestPath src dest w
 
         takeMin Nothing newPath = Just newPath
         takeMin path newPath = (\p -> if costs p < costs newPath then p else newPath) <$> path
-          where costs = sum . map snd
+        
+        costs = sum . map snd
 
-allPaths :: Int -> Int -> Web -> [[Int]]
+allPaths :: Eq a => a -> a -> Web a -> [[a]]
 allPaths src dest w
   | src == dest = []
   | otherwise = maybe [] (\Vertex{..} ->
