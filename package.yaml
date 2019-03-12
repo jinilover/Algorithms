@@ -38,8 +38,8 @@ tests:
     main:                doctests.hs
     source-dirs:         test
     default-extensions:  OverloadedStrings
-                      , RecordWildCards
-                      , NoImplicitPrelude
+                       , RecordWildCards
+                       , NoImplicitPrelude
     ghc-options:
     - -threaded
     - -rtsopts

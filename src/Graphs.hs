@@ -1,14 +1,16 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE NoImplicitPrelude
+           , RecordWildCards #-}
+
 module Graphs where
 
 import Protolude
-import Data.List
+import Data.List (nub)
 import qualified Data.Map as M
 
--- data RoseTree a = Node a [RoseTree a] deriving Show -- is it n-ary tree can be presented by cofree
+data RoseTree a = Nde a [RoseTree a] deriving Show -- is it n-ary tree can be presented by cofree
 
--- foldRoseTree :: (a -> [b] -> b) -> b -> RoseTree a -> b
--- foldRoseTree f y (Node x branches) = f x $ map (foldRoseTree f y) branches
+foldRoseTree :: (a -> [b] -> b) -> b -> RoseTree a -> b
+foldRoseTree f y (Nde x branches) = f x $ map (foldRoseTree f y) branches
 
 data Free f a = Pure a
               | Free f (Free f a)
@@ -19,19 +21,21 @@ foldCofree :: Functor f => (a -> f b -> b) -> b -> Cofree f a -> b
 foldCofree g b (x :< fOfCofree) = g x (foldCofree g b <$> fOfCofree)
 
 data Node a = Node {
-    nodeVal :: a
+    node :: a
   , adjacents :: [a]
 } deriving Show
 
 type Graph a = [Node a]
 
 genGraph :: Eq a => [a] -> Graph a
-genGraph (x1 : x2 : xs) = addNode x2 x1 $ addNode x1 x2 $ genGraph xs
+genGraph (x1 : x2 : xs) =
+  addNode x2 x1 $ addNode x1 x2 $ genGraph xs
   where addNode :: Eq a => a -> a -> Graph a -> Graph a
         addNode x1 x2 xs =
-          let newNode = maybe (Node x1 [x2]) (\node@Node{..} ->
-                        node {adjacents = x2 : adjacents}) $ find ((x1 ==) . nodeVal) xs in
-          newNode : filter ((x1 /=) . nodeVal) xs
+          let newNode = maybe (Node x1 [x2]) (\nd ->
+                        nd {adjacents = x2 : adjacents nd}) $
+                        find ((x1 ==) . node) xs in
+          newNode : filter ((x1 /=) . node) xs
 genGraph _ = []
 
 -- |
@@ -59,17 +63,17 @@ genGraph _ = []
 -- >>> bfsGraph 1 5 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,3,4,5]
 bfsGraph :: Eq a => a -> a -> Graph a -> [a]
-bfsGraph src dest graph = maybe [] (\node -> 
-    let (path, found, _) = traverseNodes [] [node] [] in if found then path else []
+bfsGraph src dest graph = maybe [] (\node ->
+    let (path, found, _) = checkNodes [] [node] [] in if found then path else []
   ) $ findNode graph src
-  where traverseNodes visited [] adjs = (visited, False, adjs)
-        traverseNodes visited (Node{..} : nodes) adjs
-            | elem nodeVal visited = traverseNodes visited nodes adjs
-            | nodeVal == dest = (visited ++ [dest], True, [])
-            | otherwise = let (newVisited, found, allSiblingAdjs) = traverseNodes (visited ++ [nodeVal]) nodes (adjs ++ adjacents) in
-                          if found 
+  where checkNodes visited [] adjs = (visited, False, adjs)
+        checkNodes visited (Node{..} : nodes) adjs
+            | elem node visited = checkNodes visited nodes adjs
+            | node == dest = (visited ++ [dest], True, [])
+            | otherwise = let (newVisited, found, allSiblingAdjs) = checkNodes (visited ++ [node]) nodes (adjs ++ adjacents) in
+                          if found
                             then (newVisited, True, [])
-                            else traverseNodes newVisited (mapMaybe (findNode graph) . nub $ allSiblingAdjs) []
+                            else checkNodes newVisited (mapMaybe (findNode graph) . nub $ allSiblingAdjs) []
 
 -- |
 -- >>> dfsGraph 1 4 $ genGraph [1,2,1,3,1,4,3,5]
@@ -99,21 +103,79 @@ bfsGraph src dest graph = maybe [] (\node ->
 -- >>> dfsGraph 1 7 $ genGraph [1,2,1,3,1,4,2,5,2,6,2,7,3,8,3,9,3,10,4,11,4,12]
 -- [1,2,5,6,7]
 dfsGraph :: Eq a => a -> a -> Graph a -> [a]
-dfsGraph src dest graph = maybe [] (\node -> 
-    let (path, found) = traverseNodes [] [node] in if found then path else []
+dfsGraph src dest graph = maybe [] (\node ->
+    let (path, found) = checkNodes [] [node] in if found then path else []
   ) $ findNode graph src
-  where traverseNodes visited [] = (visited, False)
-        traverseNodes visited (Node{..} : nodes)
-          | elem nodeVal visited = traverseNodes visited nodes
-          | nodeVal == dest = (visited ++ [nodeVal], True)
-          | otherwise = let (newVisited, found) = traverseNodes (visited ++ [nodeVal]) . mapMaybe (findNode graph) $ adjacents in
+  where checkNodes visited [] = (visited, False)
+        checkNodes visited (Node{..} : nodes)
+          | elem node visited = checkNodes visited nodes
+          | node == dest = (visited ++ [node], True)
+          | otherwise = let (newVisited, found) = checkNodes (visited ++ [node]) . mapMaybe (findNode graph) $ adjacents in
                         if found
                           then (newVisited, True)
-                          else traverseNodes newVisited nodes
+                          else checkNodes newVisited nodes
 
 findNode :: Eq a => Graph a -> a -> Maybe (Node a)
-findNode graph v = find ((== v) . nodeVal) graph
+findNode = findPoint node
 
--- data Vertex a = Vertex {
---     value :: 
--- }
+type Edge = (Int, Int) -- (vertex, cost)
+
+data Vertex = Vertex {
+    vertex :: Int
+  , edges :: [Edge]
+} deriving Show
+
+type Web = [Vertex]
+
+findVertex :: Web -> Int -> Maybe Vertex
+findVertex = findPoint vertex
+
+findPoint :: Eq a => (b -> a) -> [b] -> a -> Maybe b
+findPoint f xs x = find ((x ==) . f) xs
+
+genWeb :: [Int] -> Web
+genWeb (x1 : x2 : cost : xs) = addVertex x2 x1 cost $ addVertex x1 x2 cost $ genWeb xs
+  where addVertex :: Int -> Int -> Int -> Web -> Web
+        addVertex x1 x2 cost xs =
+          let newVertex = maybe (Vertex x1 [(x2, cost)]) (\v ->
+                            v {edges = (x2, cost) : edges v}
+                          ) $ findVertex xs x1 in
+          newVertex : filter ((/= x1) . vertex) xs
+genWeb [] = []
+
+shortestPath :: Int -> Int -> Web -> [Int]
+shortestPath src dest w
+  | src == dest = []
+  | otherwise = maybe [] (\Vertex{..} ->
+        let (_, minPath) = checkVertices [] edges Nothing in
+        maybe [] ((src :) . map fst) minPath
+      ) $ findVertex w src
+  where checkVertices visited [] minPath = (visited, minPath)
+        checkVertices visited (edge@(vertex, cost) : eds) minPath
+          | vertex == dest = checkVertices visited eds . takeMin minPath $ visited ++ [edge]
+          | any ((== vertex) . fst) visited || vertex == src = checkVertices visited eds minPath
+          | otherwise =
+            maybe (checkVertices visited eds minPath) (\Vertex{..} ->
+              let (_, newMin) = checkVertices (visited ++ [edge]) edges minPath in
+              checkVertices visited eds newMin
+            ) $ findVertex w vertex
+
+        takeMin Nothing newPath = Just newPath
+        takeMin path newPath = (\p -> if costs p < costs newPath then p else newPath) <$> path
+          where costs = sum . map snd
+
+allPaths :: Int -> Int -> Web -> [[Int]]
+allPaths src dest w
+  | src == dest = []
+  | otherwise = maybe [] (\Vertex{..} ->
+      let (_, paths) = checkVertices [] edges [] in (src:) . (fst <$>) <$> paths
+    ) $ findVertex w src
+  where checkVertices visited [] paths = (visited, paths)
+        checkVertices visited (edge@(vertex, cost) : eds) paths
+          | vertex == dest = checkVertices visited eds ((visited ++ [edge]) : paths)
+          | any ((== vertex) . fst) visited || vertex == src = checkVertices visited eds paths
+          | otherwise =
+            maybe (checkVertices visited eds paths) (\Vertex{..} ->
+              let (_, newPaths) = checkVertices (visited ++ [edge]) edges paths in
+              checkVertices visited eds newPaths
+            ) $ findVertex w vertex
