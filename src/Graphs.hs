@@ -148,6 +148,9 @@ genWeb [] = []
 -- 
 -- >>> shortestPath 2 3 $ genWeb [(1,2,10),(1,3,20),(1,4,1),(2,3,16),(3,4,4)]
 -- [2,1,4,3]
+-- 
+-- >>> shortestPath 'a' 'b' $ genWeb [('a', 'b', 12), ('a', 'c', 7), ('a', 'd', 5), ('b', 'c', 4), ('b', 'g', 7), ('c', 'd', 9), ('c', 'e', 4), ('c', 'g', 3), ('d', 'e', 7), ('e', 'f', 5), ('e', 'g', 2), ('f', 'g', 2)]
+-- "acb"
 shortestPath :: Eq a => a -> a -> Web a -> [a]
 shortestPath src dest w
   | src == dest = []
