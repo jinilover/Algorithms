@@ -2,10 +2,10 @@ module RoseTrees where
 
 import Protolude
 
-data RoseTree a = Nde a [RoseTree a] deriving Show -- is it n-ary tree can be presented by cofree
+data RoseTree a = RoseNode a [RoseTree a] deriving Show -- is it n-ary tree can be presented by cofree
 
 foldRoseTree :: (a -> [b] -> b) -> b -> RoseTree a -> b
-foldRoseTree f y (Nde x branches) = f x $ map (foldRoseTree f y) branches
+foldRoseTree f y (RoseNode x branches) = f x $ map (foldRoseTree f y) branches
 
 data Free f a = Pure a
                 | Free f (Free f a)
