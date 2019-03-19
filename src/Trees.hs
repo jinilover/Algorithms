@@ -9,6 +9,13 @@ import Prelude (tail, String, read, id)
 import qualified Data.Vector as V
 import qualified Data.Map as M
 
+-- $setup
+-- >>> import Math.Combinatorics.Exact.Factorial
+-- >>> import Test.QuickCheck
+-- >>> newtype Small = Small Int deriving Show
+-- >>> instance Arbitrary Small where arbitrary = Small <$> choose (1, 1000)
+--
+
 data Tree a where
     Empty :: Tree a
     Branch :: Tree a -> a -> Tree a -> Tree a
@@ -601,35 +608,7 @@ foldlTree_leftMost = foldlTree (\b x -> mplus b $ Just x) Nothing
 --     3      2             2      1
 -- and so on.
 -- 
--- >>> noOfBsts 0
--- 1
--- 
--- >>> noOfBsts 1
--- 1
--- 
--- >>> noOfBsts 2
--- 2
--- 
--- >>> noOfBsts 3
--- 5
--- 
--- >>> noOfBsts 4
--- 14
--- 
--- >>> noOfBsts 5
--- 42
--- 
--- >>> noOfBsts 6
--- 132
--- 
--- >>> noOfBsts 7
--- 429
--- 
--- >>> noOfBsts 8
--- 1430
--- 
--- >>> noOfBsts 9
--- 4862
+-- prop> \(Small n) -> (factorial (2 * n) `div` factorial (n + 1) `div` factorial n) == noOfBsts n
 noOfBsts :: Int -> Integer
 noOfBsts n = bstV n V.! n
     where bstV 0 = V.fromList [1]
