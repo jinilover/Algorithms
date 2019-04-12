@@ -168,13 +168,13 @@ subsetSum (x : xs) target =
 
 -- |
 -- >>> knapsack01 [60, 100, 120] [10, 20, 30] 50
--- 220
+-- [(100,20),(120,30)]
 -- 
 -- >>> knapsack01 [1, 2, 3] [4, 5, 1] 4
--- 3
+-- [(3,1)]
 -- 
-knapsack01 :: [Int] -> [Int] -> Int -> Int -- [v] -> [w] -> W -> sumV
-knapsack01 vs ws = valSum . recur (zip vs ws)
+knapsack01 :: [Int] -> [Int] -> Int -> [(Int, Int)] -- [v] -> [w] -> W -> sumV
+knapsack01 vs ws = recur (zip vs ws)
     where recur _ 0 = []
           recur [] _ = []
           recur (t@(v, w) : xs) cap =
@@ -185,7 +185,18 @@ knapsack01 vs ws = valSum . recur (zip vs ws)
             | valSum t1 > valSum t2 = t1
             | otherwise = t2
 
-          valSum = sum . map fst
+-- |
+-- >>> knapsack01Val [60, 100, 120] [10, 20, 30] 50
+-- 220
+-- 
+-- >>> knapsack01Val [1, 2, 3] [4, 5, 1] 4
+-- 3
+-- 
+knapsack01Val :: [Int] -> [Int] -> Int -> Int
+knapsack01Val = ((valSum .).) . knapsack01
+
+valSum :: [(Int, Int)] -> Int
+valSum = sum . map fst
 
 type Interval = (Int, Int)
 
